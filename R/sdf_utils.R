@@ -1,6 +1,3 @@
-#' @include globals.R
-NULL
-
 #' Utility functions for importing a Spark data frame into a TimeSeriesRDD
 #'
 #' These functions provide an interface for specifying how a Spark data frame
@@ -15,6 +12,8 @@ NULL
 #' @param time_column Name of the time column
 #'
 #' @name sdf_utils
+#'
+#' @include globals.R
 NULL
 
 jtime_unit <- function(sc, time_unit = .sparklyr.flint.globals$kValidTimeUnits) {
@@ -32,8 +31,7 @@ new_ts_rdd_builder <- function(sc, is_sorted, time_unit, time_column) {
 }
 
 new_ts_rdd <- function(jobj) {
-  class(jobj) <- c("ts_rdd", class(jobj))
-  jobj
+  structure(list(.jobj = jobj), class = "ts_rdd")
 }
 
 .fromSDF <- function(builder, time_column) {
@@ -91,6 +89,8 @@ new_ts_rdd <- function(jobj) {
 #'
 #' @return A reusable TimeSeriesRDD builder object
 #'
+#' @family Spark dataframe utility functions
+#'
 #' @export
 ts_rdd_builder <- function(
                            sc,
@@ -128,13 +128,15 @@ ts_rdd_builder <- function(
 #'
 #' if (!is.null(sc)) {
 #'   sdf <- copy_to(sc, tibble::tibble(t = seq(10), v = seq(10)))
-#'   ts <- fromSDF(sdf, is_sorted = TRUE, time_unit = "SECONDS", time_column = "t")
+#'   ts <- from_sdf(sdf, is_sorted = TRUE, time_unit = "SECONDS", time_column = "t")
 #' } else {
 #'   message("Unable to establish a Spark connection!")
 #' }
 #'
+#' @family Spark dataframe utility functions
+#'
 #' @export
-fromSDF <- function(
+from_sdf <- function(
                     sdf,
                     is_sorted = FALSE,
                     time_unit = .sparklyr.flint.globals$kValidTimeUnits,
@@ -143,6 +145,13 @@ fromSDF <- function(
   builder <- ts_rdd_builder(sc, is_sorted, time_unit, time_column)
   builder$fromSDF(sdf)
 }
+
+#' @rdname from_sdf
+#'
+#' @family Spark dataframe utility functions
+#'
+#' @export
+fromSDF <- from_sdf
 
 #' Construct a TimeSeriesRDD from a Spark RDD of rows
 #'
@@ -166,7 +175,7 @@ fromSDF <- function(
 #'   sdf <- copy_to(sc, tibble::tibble(t = seq(10), v = seq(10)))
 #'   rdd <- spark_dataframe(sdf) %>% invoke("rdd")
 #'   schema <- spark_dataframe(sdf) %>% invoke("schema")
-#'   ts <- fromRDD(
+#'   ts <- from_rdd(
 #'     rdd, schema,
 #'     is_sorted = TRUE, time_unit = "SECONDS", time_column = "t"
 #'   )
@@ -174,8 +183,10 @@ fromSDF <- function(
 #'   message("Unable to establish a Spark connection!")
 #' }
 #'
+#' @family Spark dataframe utility functions
+#'
 #' @export
-fromRDD <- function(
+from_rdd <- function(
                     rdd,
                     schema,
                     is_sorted = FALSE,
@@ -186,6 +197,85 @@ fromRDD <- function(
   builder$fromRDD(rdd, schema)
 }
 
+#' @rdname from_rdd
+#'
+#' @family Spark dataframe utility functions
+#'
+#' @export
+fromRDD <- from_rdd
+
+#' Retrieve a Spark DataFrame
+#'
+#' Retrieve a Spark DataFrame from a TimeSeriesRDD object
+#'
+#' @param x An R object wrapping, or containing, a Spark DataFrame.
+#' @param ... Optional arguments; currently unused.
+#'
+#' @examples
+#'
+#' library(sparklyr)
+#' library(sparklyr.flint)
+#'
+#' sc <- try_spark_connect(master = "local")
+#'
+#' if (!is.null(sc)) {
+#'   sdf <- copy_to(sc, tibble::tibble(t = seq(10), v = seq(10)))
+#'   ts <- from_sdf(sdf, is_sorted = TRUE, time_unit = "SECONDS", time_column = "t")
+#'   print(ts %>% spark_dataframe())
+#'   print(sdf %>% spark_dataframe()) # the former should contain the same set of
+#'                                    # rows as the latter does, modulo possible
+#'                                    # difference in types of timestamp columns
+#' } else {
+#'   message("Unable to establish a Spark connection!")
+#' }
+#'
+#' @family Spark dataframe utility functions
+#'
+#' @importFrom sparklyr spark_dataframe
+#' @export
+spark_dataframe.ts_rdd <- function(x, ...) {
+  invoke(spark_jobj(x), "toDF")
+}
+
+#' Export data from TimeSeriesRDD to a Spark dataframe
+#'
+#' Construct a Spark dataframe containing time series data from a TimeSeriesRDD
+#'
+#' @param ts_rdd A TimeSeriesRDD object
+#'
+#' @return A Spark dataframe containing time series data exported from `ts_rdd`
+#'
+#' @examples
+#'
+#' library(sparklyr)
+#' library(sparklyr.flint)
+#'
+#' sc <- try_spark_connect(master = "local")
+#'
+#' if (!is.null(sc)) {
+#'   sdf <- copy_to(sc, tibble::tibble(t = seq(10), v = seq(10)))
+#'   ts <- from_sdf(sdf, is_sorted = TRUE, time_unit = "SECONDS", time_column = "t")
+#'   ts_avg <- summarize_avg(ts, column = "v", window = in_past("3s"))
+#'   # now export the average values from `ts_avg` back to a Spark dataframe
+#'   # named `sdf_avg`
+#'   sdf_avg <- ts_avg %>% to_sdf()
+#' } else {
+#'   message("Unable to establish a Spark connection!")
+#' }
+#'
+#' @family Spark dataframe utility functions
+#'
+#' @export
+to_sdf <- function(ts_rdd) {
+  ts_rdd %>% spark_dataframe() %>% sdf_register()
+}
+
+#' @rdname to_sdf
+#'
+#' @family Spark dataframe utility functions
+#'
+#' @export
+toSDF <- to_sdf
 
 #' Collect data from a TimeSeriesRDD
 #'
@@ -206,16 +296,76 @@ fromRDD <- function(
 #'
 #' if (!is.null(sc)) {
 #'   sdf <- copy_to(sc, tibble::tibble(t = seq(10), v = seq(10)))
-#'   ts <- fromSDF(sdf, is_sorted = TRUE, time_unit = "SECONDS", time_column = "t")
+#'   ts <- from_sdf(sdf, is_sorted = TRUE, time_unit = "SECONDS", time_column = "t")
 #'   df <- ts %>% collect()
 #' } else {
 #'   message("Unable to establish a Spark connection!")
 #' }
 #'
+#' @family Spark dataframe utility functions
+#'
 #' @importFrom dplyr collect
 #' @export
 collect.ts_rdd <- function(x, ...) {
-  invoke(x, "toDF") %>%
-    sdf_register() %>%
-    collect()
+  to_sdf(x) %>% collect()
+}
+
+#' Retrieve a Spark JVM Object Reference
+#'
+#' See \code{\link[sparklyr:spark_jobj]{spark_jobj}} for more details.
+#'
+#' @param x An R object containing, or wrapping, a 'spark_jobj'.
+#' @param ... Optional arguments; currently unused.
+#'
+#' @examples
+#'
+#' library(sparklyr)
+#' library(sparklyr.flint)
+#'
+#' sc <- try_spark_connect(master = "local")
+#'
+#' if (!is.null(sc)) {
+#'   sdf <- copy_to(sc, tibble::tibble(t = seq(10), v = seq(10)))
+#'   ts <- fromSDF(sdf, is_sorted = TRUE, time_unit = "SECONDS", time_column = "t")
+#'   print(spark_jobj(ts))
+#' } else {
+#'   message("Unable to establish a Spark connection!")
+#' }
+#'
+#' @family Spark dataframe utility functions
+#'
+#' @export
+#' @importFrom sparklyr spark_jobj
+spark_jobj.ts_rdd <- function(x, ...) {
+  x$.jobj
+}
+
+#' Retrieve Spark connection associated with an R object
+#'
+#' See \code{\link[sparklyr:spark_connection]{spark_connection}} for more details.
+#'
+#' @param x An R object from which a 'spark_connection' can be obtained.
+#' @param ... Optional arguments; currently unused.
+#'
+#' @examples
+#'
+#' library(sparklyr)
+#' library(sparklyr.flint)
+#'
+#' sc <- try_spark_connect(master = "local")
+#'
+#' if (!is.null(sc)) {
+#'   sdf <- copy_to(sc, tibble::tibble(t = seq(10), v = seq(10)))
+#'   ts <- fromSDF(sdf, is_sorted = TRUE, time_unit = "SECONDS", time_column = "t")
+#'   print(spark_connection(ts))
+#' } else {
+#'   message("Unable to establish a Spark connection!")
+#' }
+#'
+#' @family Spark dataframe utility functions
+#'
+#' @export
+#' @importFrom sparklyr spark_connection
+spark_connection.ts_rdd <- function(x, ...) {
+  x %>% spark_jobj() %>% sparklyr::spark_connection()
 }

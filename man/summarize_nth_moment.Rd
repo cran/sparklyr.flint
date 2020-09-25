@@ -4,7 +4,13 @@
 \alias{summarize_nth_moment}
 \title{N-th moment summarizer}
 \usage{
-summarize_nth_moment(ts_rdd, column, n, key_columns = list())
+summarize_nth_moment(
+  ts_rdd,
+  column,
+  n,
+  key_columns = list(),
+  incremental = FALSE
+)
 }
 \arguments{
 \item{ts_rdd}{Timeseries RDD being summarized}
@@ -14,13 +20,25 @@ summarize_nth_moment(ts_rdd, column, n, key_columns = list())
 \item{n}{The order of moment to calculate}
 
 \item{key_columns}{Optional list of columns that will form an equivalence
-relation associating each row with the time series it belongs to (i.e., any
-2 rows having equal values in those columns will be associated with the
-same time series, and any 2 rows having differing values in those columns
-are considered to be from 2 separate time series and will therefore be
-summarized separately)
-By default, `key_colums` is empty and all rows are considered to be part of
-a single time series.}
+relation associating each record with the time series it belongs to (i.e.,
+any 2 records having equal values in those columns will be associated with
+the same time series, and any 2 records having differing values in those
+columns are considered to be from 2 separate time series and will therefore
+be summarized separately)
+By default, `key_colums` is empty and all records are considered to be part
+of a single time series.}
+
+\item{incremental}{If FALSE and `key_columns` is empty, then apply the
+summarizer to all records of `ts_rdd`.
+If FALSE and `key_columns` is non-empty, then apply the summarizer to all
+records within each group determined by `key_columns`.
+If TRUE and `key_columns` is empty, then for each record in `ts_rdd`,
+the summarizer is applied to that record and all records preceding it, and
+the summarized result is associated with the timestamp of that record.
+If TRUE and `key_columns` is non-empty, then for each record within a group
+of records determined by 1 or more key columns, the summarizer is applied
+to that record and all records preceding it within its group, and the
+summarized result is associated with the timestamp of that record.}
 }
 \value{
 A TimeSeriesRDD containing the summarized result
@@ -47,17 +65,23 @@ if (!is.null(sc)) {
 }
 \seealso{
 Other summarizers: 
+\code{\link{ols_regression}()},
 \code{\link{summarize_avg}()},
 \code{\link{summarize_corr2}()},
 \code{\link{summarize_corr}()},
 \code{\link{summarize_count}()},
 \code{\link{summarize_covar}()},
 \code{\link{summarize_dot_product}()},
+\code{\link{summarize_ema_half_life}()},
+\code{\link{summarize_ewma}()},
+\code{\link{summarize_geometric_mean}()},
+\code{\link{summarize_kurtosis}()},
 \code{\link{summarize_max}()},
 \code{\link{summarize_min}()},
 \code{\link{summarize_nth_central_moment}()},
 \code{\link{summarize_product}()},
 \code{\link{summarize_quantile}()},
+\code{\link{summarize_skewness}()},
 \code{\link{summarize_stddev}()},
 \code{\link{summarize_sum}()},
 \code{\link{summarize_var}()},
