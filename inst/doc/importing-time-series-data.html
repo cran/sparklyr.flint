@@ -15,6 +15,15 @@
 <title>Importing time series data</title>
 
 
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
 
 <style type="text/css">code{white-space: pre;}</style>
 <style type="text/css" data-origin="pandoc">
@@ -35,7 +44,7 @@ a.sourceLine { text-indent: -1em; padding-left: 1em; }
 pre.numberSource a.sourceLine
   { position: relative; left: -4em; }
 pre.numberSource a.sourceLine::before
-  { content: attr(data-line-number);
+  { content: attr(title);
     position: relative; left: -1em; text-align: right; vertical-align: baseline;
     border: none; pointer-events: all; display: inline-block;
     -webkit-touch-callout: none; -webkit-user-select: none;
@@ -102,6 +111,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
   }
 })();
 </script>
+
 
 
 
@@ -303,23 +313,23 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 <p>Importing time series data from R to sparklyr.flint is fairly simple and straightforward. It is probably best illustrated through some small examples.</p>
 <p>Firstly, one needs to establish a Spark connection by calling <code>sparklyr::spark_connect</code>, e.g.,</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb1-1" data-line-number="1"><span class="kw">library</span>(sparklyr)</a>
-<a class="sourceLine" id="cb1-2" data-line-number="2">sc &lt;-<span class="st"> </span><span class="kw">spark_connect</span>(<span class="dt">master =</span> <span class="st">&quot;yarn-client&quot;</span>, <span class="dt">spark_home =</span> <span class="st">&quot;/usr/lib/spark&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb1-1" title="1"><span class="kw">library</span>(sparklyr)</a>
+<a class="sourceLine" id="cb1-2" title="2">sc &lt;-<span class="st"> </span><span class="kw">spark_connect</span>(<span class="dt">master =</span> <span class="st">&quot;yarn-client&quot;</span>, <span class="dt">spark_home =</span> <span class="st">&quot;/usr/lib/spark&quot;</span>)</a></code></pre></div>
 <p>to connect to a Spark cluster in YARN client mode, or</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb2-1" data-line-number="1"><span class="kw">library</span>(sparklyr)</a>
-<a class="sourceLine" id="cb2-2" data-line-number="2">sc &lt;-<span class="st"> </span><span class="kw">spark_connect</span>(<span class="dt">master =</span> <span class="st">&quot;local&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb2-1" title="1"><span class="kw">library</span>(sparklyr)</a>
+<a class="sourceLine" id="cb2-2" title="2">sc &lt;-<span class="st"> </span><span class="kw">spark_connect</span>(<span class="dt">master =</span> <span class="st">&quot;local&quot;</span>)</a></code></pre></div>
 <p>to connect to Spark in local mode.</p>
 <p>For those unfamiliar with Spark connections, <a href="https://therinspark.com/connections.html#connections">chapter 7</a> of “Mastering Spark with R” by Javier Luraschi, Kevin Kuo, and Edgar Ruiz contains some very helpful explanations of several modes of connecting to Spark from <code>sparklyr</code>.</p>
 <p>Next, the time series data needs to be imported into a Spark dataframe. This can be accomplished with methods such as <code>sparklyr::spark_read_csv</code>, <code>sparklyr::spark_read_json</code>, etc if data source is a file on disk, e.g.,</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb3-1" data-line-number="1">sdf &lt;-<span class="st"> </span><span class="kw">spark_read_csv</span>(sc, <span class="st">&quot;/tmp/data.csv&quot;</span>, <span class="dt">header =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb3-1" title="1">sdf &lt;-<span class="st"> </span><span class="kw">spark_read_csv</span>(sc, <span class="st">&quot;/tmp/data.csv&quot;</span>, <span class="dt">header =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
 <p>or alternatively, using <code>sparklyr::copy_to</code> if data is in a R dataframe, e.g.,</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb4-1" data-line-number="1">example_time_series_data &lt;-<span class="st"> </span><span class="kw">data.frame</span>(</a>
-<a class="sourceLine" id="cb4-2" data-line-number="2">  <span class="dt">t =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">4</span>, <span class="dv">6</span>, <span class="dv">7</span>, <span class="dv">10</span>, <span class="dv">15</span>, <span class="dv">16</span>, <span class="dv">18</span>, <span class="dv">19</span>),</a>
-<a class="sourceLine" id="cb4-3" data-line-number="3">  <span class="dt">v =</span> <span class="kw">c</span>(<span class="dv">4</span>, <span class="dv">-2</span>, <span class="ot">NA</span>, <span class="dv">5</span>, <span class="ot">NA</span>, <span class="dv">1</span>, <span class="dv">-4</span>, <span class="dv">5</span>, <span class="ot">NA</span>, <span class="dv">3</span>)</a>
-<a class="sourceLine" id="cb4-4" data-line-number="4">)</a>
-<a class="sourceLine" id="cb4-5" data-line-number="5">sdf &lt;-<span class="st"> </span><span class="kw">copy_to</span>(sc, example_time_series_data, <span class="dt">overwrite =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb4-1" title="1">example_time_series_data &lt;-<span class="st"> </span><span class="kw">data.frame</span>(</a>
+<a class="sourceLine" id="cb4-2" title="2">  <span class="dt">t =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">4</span>, <span class="dv">6</span>, <span class="dv">7</span>, <span class="dv">10</span>, <span class="dv">15</span>, <span class="dv">16</span>, <span class="dv">18</span>, <span class="dv">19</span>),</a>
+<a class="sourceLine" id="cb4-3" title="3">  <span class="dt">v =</span> <span class="kw">c</span>(<span class="dv">4</span>, <span class="dv">-2</span>, <span class="ot">NA</span>, <span class="dv">5</span>, <span class="ot">NA</span>, <span class="dv">1</span>, <span class="dv">-4</span>, <span class="dv">5</span>, <span class="ot">NA</span>, <span class="dv">3</span>)</a>
+<a class="sourceLine" id="cb4-4" title="4">)</a>
+<a class="sourceLine" id="cb4-5" title="5">sdf &lt;-<span class="st"> </span><span class="kw">copy_to</span>(sc, example_time_series_data, <span class="dt">overwrite =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
 <p>Finally, in order to unambiguously interpret the time series data we have provided in <code>sdf</code> so far, the Flint time series library will have to be informed about the name and the unit of the time column, and also whether all rows in the Spark dataframe from above are sorted by time already. All of this information will be encapsulated in a <code>TimeSeriesRDD</code> object derived from <code>sdf</code>, as shown below:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb5-1" data-line-number="1">ts_rdd &lt;-<span class="st"> </span><span class="kw">fromSDF</span>(sdf, <span class="dt">is_sorted =</span> <span class="ot">TRUE</span>, <span class="dt">time_unit =</span> <span class="st">&quot;SECONDS&quot;</span>, <span class="dt">time_column =</span> <span class="st">&quot;t&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb5-1" title="1">ts_rdd &lt;-<span class="st"> </span><span class="kw">fromSDF</span>(sdf, <span class="dt">is_sorted =</span> <span class="ot">TRUE</span>, <span class="dt">time_unit =</span> <span class="st">&quot;SECONDS&quot;</span>, <span class="dt">time_column =</span> <span class="st">&quot;t&quot;</span>)</a></code></pre></div>
 <p>At this point, <code>ts_rdd</code> contains all data and metadata necessary for Flint to perform various analyses on <code>example_time_series_data</code>, and results from those analyses will also be returned to us in separate <code>TimeSeriesRDD</code> objects.</p>
 
 
